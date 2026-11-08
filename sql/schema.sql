@@ -44,3 +44,34 @@ ON sales (customer_id);
 
 CREATE INDEX IF NOT EXISTS idx_cancellations_invoice_no
 ON cancellations (invoice_no);
+
+
+-- Pipeline execution history
+CREATE TABLE IF NOT EXISTS pipeline_runs (
+    run_id BIGSERIAL PRIMARY KEY,
+    source_key TEXT NOT NULL,
+    file_checksum CHAR(64) NOT NULL,
+
+    status VARCHAR(20) NOT NULL
+        CHECK (status IN ('RUNNING', 'SUCCESS', 'FAILED')),
+
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    finished_at TIMESTAMPTZ,
+
+    duration_seconds DOUBLE PRECISION,
+    metrics JSONB,
+
+    error_message TEXT
+);
+
+-- Speed up successful-file lookup
+CREATE INDEX IF NOT EXISTS idx_pipeline_runs_lookup
+ON pipeline_runs (
+    source_key,
+    file_checksum
+)
+WHERE status = 'SUCCESS';
+
+-- Query latest pipeline executions
+CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started
+ON pipeline_runs (started_at DESC);

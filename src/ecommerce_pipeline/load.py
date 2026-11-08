@@ -187,32 +187,53 @@ def insert_batches(connection, statement, rows, batch_size=1000):
         connection.execute(statement, batch)
 
 
-def load_data(result: TransformationResult, engine: Engine) -> dict:
-    """Load all transformed datasets in one DB transaction."""
+
+def load_data(
+    result: TransformationResult,
+    engine: Engine,
+    connection=None,
+) -> dict:
+    """
+    Load transformed datasets into PostgreSQL.
+
+    If a connection is provided, use the caller's
+    transaction. Otherwise, create a new transaction.
+    """
 
     logger.info("Starting data loading")
 
-    # Prepare records before starting the DB transaction.
     sales_rows = prepare_transaction_rows(result.sales)
+
     cancellation_rows = prepare_transaction_rows(
         result.cancellations
     )
+
     rejected_rows = prepare_rejected_rows(result.rejected)
 
-    # All changes are committed together.
-    # Any exception triggers rollback.
-    with engine.begin() as connection:
+    def execute_load(conn):
         insert_batches(
-            connection, INSERT_TRANSACTION_SQL, sales_rows
+            conn,
+            INSERT_TRANSACTION_SQL,
+            sales_rows,
         )
 
         insert_batches(
-            connection, CANCELLATION_SQL, cancellation_rows
+            conn,
+            CANCELLATION_SQL,
+            cancellation_rows,
         )
 
         insert_batches(
-            connection, INSERT_REJECTED_SQL, rejected_rows
+            conn,
+            INSERT_REJECTED_SQL,
+            rejected_rows,
         )
+
+    if connection is not None:
+        execute_load(connection)
+    else:
+        with engine.begin() as conn:
+            execute_load(conn)
 
     metrics = {
         "sales_attempted": len(sales_rows),
@@ -223,3 +244,4 @@ def load_data(result: TransformationResult, engine: Engine) -> dict:
     logger.info("Data loading completed: %s", metrics)
 
     return metrics
+

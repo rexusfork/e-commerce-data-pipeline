@@ -132,3 +132,66 @@ Integration tests verify:
 ### Next Improvements
 
 Introduce incremental loading, detailed data quality reasons, pipeline execution logs, monitoring, and orchestration.
+
+
+## Step 5 — Incremental Processing and Execution Tracking
+
+### Overview
+
+The pipeline implements file-level incremental processing using SHA-256 checksums and PostgreSQL execution history.
+
+### Incremental Processing
+
+Before extraction, the pipeline calculates a checksum of the source file.
+
+If a successful execution already exists for the same source and checksum, processing is skipped.
+
+When the file changes, the pipeline performs extraction, transformation, and loading again. Previously inserted records are protected by deterministic record fingerprints and PostgreSQL conflict handling.
+
+### Execution Tracking
+
+Pipeline execution metadata is stored in the `pipeline_runs` table.
+
+Supported statuses:
+
+- RUNNING
+- SUCCESS
+- FAILED
+
+Execution metrics include source row counts, transformation statistics, and stage durations.
+
+### Transaction Management
+
+Data loading and the transition to SUCCESS occur within the same PostgreSQL transaction.
+
+Failed executions are recorded separately after the loading transaction is rolled back.
+
+### Performance
+
+Current optimizations include:
+
+- Chunked SHA-256 calculation
+- Skipping unchanged source files
+- Batch database inserts
+- Database indexes for execution lookup
+- Measuring execution duration by pipeline stage
+
+### Limitations
+
+- The incremental mechanism operates at file level rather than row level.
+- Changed files are fully extracted and transformed again.
+- Existing source records are not updated or deleted.
+- Concurrent executions are not yet coordinated.
+- Unexpected process termination may leave RUNNING records.
+- Record preparation still materializes data in memory.
+- Pipeline runs skipped due to unchanged files are not persisted as separate execution records.
+
+### Future Improvements
+
+- Row-level incremental ingestion
+- Source watermarks and checkpointing
+- PostgreSQL COPY with staging tables
+- UPSERT and source deletion handling
+- Pipeline heartbeat and recovery
+- Apache Airflow orchestration
+- Data quality monitoring and alerting

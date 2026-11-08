@@ -45,3 +45,43 @@ SELECT
 FROM rejected
 GROUP BY rejection_reason
 ORDER BY rejected_count DESC;
+
+
+-- Latest pipeline executions
+SELECT
+    run_id,
+    status,
+    started_at,
+    finished_at,
+    ROUND(duration_seconds::NUMERIC, 2) AS duration_seconds
+FROM pipeline_runs
+ORDER BY started_at DESC
+LIMIT 20;
+
+-- Average duration of successful executions
+SELECT
+    COUNT(*) AS successful_runs,
+    ROUND(
+        AVG(duration_seconds)::NUMERIC, 2
+    ) AS avg_duration_seconds
+FROM pipeline_runs
+WHERE status = 'SUCCESS';
+
+-- Failed execution history
+SELECT
+    run_id,
+    started_at,
+    error_message
+FROM pipeline_runs
+WHERE status = 'FAILED'
+ORDER BY started_at DESC;
+
+-- Extraction and transformation timings
+SELECT
+    run_id,
+    (metrics->>'extract_seconds')::NUMERIC AS extract_seconds,
+    (metrics->>'transform_seconds')::NUMERIC AS transform_seconds,
+    (metrics->>'load_seconds')::NUMERIC AS load_seconds
+FROM pipeline_runs
+WHERE status = 'SUCCESS'
+ORDER BY run_id DESC;
