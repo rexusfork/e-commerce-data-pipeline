@@ -40,3 +40,51 @@ Automated tests cover successful extraction, missing files, empty datasets, inva
 ## 6. Next Steps
 
 The extracted dataset will be passed to the transformation module for data cleaning, validation, and preparation before loading into PostgreSQL.
+
+
+## Data Transformation
+
+The transformation stage converts raw retail transaction records into validated analytical datasets.
+
+### Transformation Rules
+
+1. Remove exact duplicate rows.
+2. Normalize text, numeric, and datetime columns.
+3. Preserve transactions with missing customer identifiers.
+4. Classify cancellation records using the invoice prefix `C`.
+5. Reject invalid transaction records.
+6. Calculate total transaction amounts.
+7. Reconcile input records against transformation outputs.
+
+### Data Outputs
+
+| Dataset | Description |
+|---|---|
+| Sales | Valid transactions with positive quantity and unit price |
+| Cancellations | Valid cancellation records with negative quantity |
+| Rejected | Records that do not satisfy the defined validation rules |
+
+### Data Quality Metrics
+
+The transformation stage records:
+
+- Total input rows
+- Number of exact duplicate rows
+- Number of valid sales rows
+- Number of cancellation rows
+- Number of rejected rows
+- Number of output rows
+
+A reconciliation check verifies that every input record is accounted for.
+
+### Limitations
+
+- Duplicate detection uses exact row equality and may not identify semantic duplicates.
+- Cancellation records are classified but are not matched to their original transactions.
+- Rejected records currently use a generic rejection reason.
+- Monetary values are processed using floating-point numbers; financial precision can be improved using decimal types in a later iteration.
+- Invalid or fractional customer identifiers require additional schema checks before integer conversion.
+
+### Next Stage
+
+Validated records will be loaded into PostgreSQL using separate tables for sales, cancellations, and rejected transactions.
