@@ -4,6 +4,7 @@ import time
 
 from pathlib import Path
 from sqlalchemy import create_engine
+from ecommerce_pipeline.quality import validate_quality
 
 from config.settings import DATABASE_URL
 from ecommerce_pipeline.extract import (
@@ -76,6 +77,20 @@ def main():
         transform_start = time.perf_counter()
         result = transform_data(raw_df)
         transform_seconds = time.perf_counter() - transform_start
+        
+        # 7. Data Quality Gate
+        quality_start = time.perf_counter()
+
+        quality_metrics = validate_quality(result)
+
+        quality_seconds = (
+            time.perf_counter() - quality_start
+        )
+
+        logger.info(
+            "Quality validation completed in %.3f seconds",
+            quality_seconds,
+)
 
         # 7. Load + mark success atomically
         load_start = time.perf_counter()
@@ -89,13 +104,17 @@ def main():
 
             load_seconds = time.perf_counter() - load_start
 
+            
             metrics = {
                 **result.metrics,
                 **load_metrics,
+                **quality_metrics,
                 "extract_seconds": round(extract_seconds, 3),
                 "transform_seconds": round(transform_seconds, 3),
+                "quality_seconds": round(quality_seconds, 3),
                 "load_seconds": round(load_seconds, 3),
             }
+
 
             finish_run_success(
                 connection,

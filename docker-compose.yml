@@ -47,6 +47,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Jakarta
 
+      ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_NAME: ${DB_NAME}
