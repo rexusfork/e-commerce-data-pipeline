@@ -88,3 +88,47 @@ A reconciliation check verifies that every input record is accounted for.
 ### Next Stage
 
 Validated records will be loaded into PostgreSQL using separate tables for sales, cancellations, and rejected transactions.
+
+## Data Loading — PostgreSQL
+
+### Overview
+
+The loading stage persists transformed transaction records into PostgreSQL using SQLAlchemy.
+
+### Database Tables
+
+- `sales`: Valid sales transaction line items.
+- `cancellations`: Cancellation transaction line items.
+- `rejected`: Invalid records preserved for auditing.
+
+### Transaction Management
+
+The loading process uses a single database transaction across all three tables. A failure during insertion triggers a rollback, preventing partial persistence.
+
+### Idempotency
+
+Each record receives a deterministic SHA-256 source fingerprint. PostgreSQL uses `ON CONFLICT DO NOTHING` to prevent duplicate insertion when the same records are processed again.
+
+### Batch Processing
+
+Records are inserted in batches of 1,000 within one database transaction.
+
+### Integration Tests
+
+Integration tests verify:
+
+- Successful persistence across three tables.
+- Idempotent repeated execution.
+- Transaction rollback after database constraint violations.
+
+### Known Limitations
+
+- Content-based fingerprints cannot distinguish legitimate identical source rows.
+- Existing records are not updated when source values change.
+- Persisted row counts may include data from previous pipeline runs.
+- Large datasets may require streaming, staging tables, or PostgreSQL COPY for better performance.
+- Schema changes should eventually use versioned database migrations.
+
+### Next Improvements
+
+Introduce incremental loading, detailed data quality reasons, pipeline execution logs, monitoring, and orchestration.
