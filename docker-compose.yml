@@ -24,5 +24,43 @@ services:
       timeout: 5s
       retries: 5
 
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+
+    container_name: ecommerce-airflow
+    restart: unless-stopped
+
+    command: standalone
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:8080:8080"
+
+    environment:
+      AIRFLOW_HOME: /opt/airflow
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/project/dags
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DEFAULT_TIMEZONE: Asia/Jakarta
+
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      PYTHONPATH: /opt/project:/opt/project/src
+
+      PYTHONUNBUFFERED: "1"
+
+    volumes:
+      - .:/opt/project:ro
+      - airflow_home:/opt/airflow
+
 volumes:
   postgres_data:
+  airflow_home:
